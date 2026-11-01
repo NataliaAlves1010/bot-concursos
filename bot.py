@@ -255,7 +255,7 @@ Se nenhum concurso atender aos critérios:
         # Esse método envia uma solicitação para gerar conteúdo
         # utilizando o modelo escolhido.
 
-        model="gemini-2.5-flash",
+        model="gemini-3.8-flash",
         # Define o modelo utilizado.
         # O nome precisa corresponder a um modelo disponível
         # e compatível com a API e com a ferramenta de busca.
