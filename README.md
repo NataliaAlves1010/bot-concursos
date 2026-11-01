@@ -1,6 +1,14 @@
 # 🤖 Bot Radar de Concursos TI (Piauí / Nordeste / Nacional)
 
-Bot automatizado que monitora concursos de Tecnologia da Informação usando o **Google Gemini com busca nativa do Google (Search Grounding)** e envia resumos formatados para o **Telegram**.
+Bot automatizado que consulta páginas públicas oficiais de concursos, usa o **Google Gemini** para resumir oportunidades de Tecnologia da Informação (TI) e envia o resultado pelo **Telegram**. O bot não usa Google Search Grounding: a busca é feita pela coleta direta de páginas oficiais selecionadas.
+
+## Fontes consultadas
+
+- SEAD e Governo do Piauí
+- COPESE/UFPI, IFPI e NUCEPE/UESPI
+- Páginas do Ministério da Gestão e da Inovação em Serviços Públicos (MGI) sobre autorizações e CPNU
+
+A coleta é limitada a essas páginas e pode não encontrar todos os concursos do Brasil. Os resultados devem ser conferidos no edital oficial. A geração de texto usa a cota gratuita disponível para o Gemini; ela continua sujeita aos limites de uso da conta.
 
 ## ⏰ Agendamento
 Executado automaticamente pelo **GitHub Actions** toda:
@@ -44,4 +52,4 @@ No repositório que você criou:
 1. No seu repositório no GitHub, clique na aba **Actions**.
 2. No menu lateral esquerdo, clique em **Monitor Concursos TI**.
 3. Clique no botão **Run workflow** e selecione a branch `main`.
-4. Em menos de 30 segundos a mensagem chegará no seu Telegram!
+4. A execução consulta as fontes configuradas, resume o conteúdo disponível e envia a mensagem ao Telegram. O tempo depende da disponibilidade dos sites oficiais.
