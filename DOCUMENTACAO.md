@@ -105,7 +105,7 @@ O bot opera em um modelo **Serverless On-Demand** (sem servidor ligado 24h):
 132:     
 133:     # Ativa a busca nativa do Google no Gemini
 134:     response = client.models.generate_content(
-135:         model="gemini-2.5-flash",
+135:         model="gemini-3.8-flash",
 136:         contents=prompt,
 137:         config=types.GenerateContentConfig(
 138:             tools=[types.Tool(google_search=types.GoogleSearch())],
@@ -117,7 +117,7 @@ O bot opera em um modelo **Serverless On-Demand** (sem servidor ligado 24h):
 
 * **Linha 131:** Emite um log no console do GitHub Actions para monitoramento.
 * **Linha 134:** Chama a API de geração de conteúdo do Gemini.
-* **Linha 135:** Usa o modelo `gemini-2.5-flash`, que é extremamente rápido, preciso e compatível com a busca na web.
+* **Linha 135:** Usa o modelo `gemini-3.8-flash`, compatível com a busca na web (Search Grounding).
 * **Linha 136:** Envia o prompt com os termos e regras.
 * **Linha 137:** Configura os parâmetros avançados da geração.
 * **Linha 138 (`tools=[types.Tool(google_search=types.GoogleSearch())]`):** **Linha chave!** É aqui que ativamos o *Google Search Grounding*. Isso instrui o Gemini a não responder apenas com sua memória de treino, mas sim a disparar buscas ativas no Google para coletar informações em tempo real.
