@@ -2,6 +2,8 @@
 # 1. IMPORTAÇÃO DE BIBLIOTECAS
 # =============================================================
 
+import time
+
 import os
 # Importa a biblioteca os, que permite interagir com o sistema
 # operacional.
@@ -131,7 +133,7 @@ def extrair_pagina_oficial(url):
     """Baixa uma página oficial e devolve seu texto e links de editais."""
     resposta = requests.get(
         url,
-        headers={"User-Agent": "RadarConcursosTI/1.0 (monitoramento de páginas públicas)"},
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"},
         timeout=20,
     )
     resposta.raise_for_status()
@@ -285,23 +287,31 @@ PÁGINAS OFICIAIS CONSULTADAS:
     ]
 
     for modelo in modelos:
-        try:
-            print(f"Tentando modelo {modelo}...")
-            response = client.models.generate_content(
-                model=modelo,
-                contents=prompt,
-                config=types.GenerateContentConfig(temperature=0.2),
-            )
-            if response.text:
-                print(f"Resposta gerada com {modelo}.")
-                return response.text
-        except Exception as erro:
-            if "429" in str(erro) or "RESOURCE_EXHAUSTED" in str(erro):
-                print(f"Cota esgotada em {modelo}, tentando o próximo...")
-                continue
-            raise
+        for tentativa in range(1, 4):
+            try:
+                print(f"Tentando modelo {modelo} (tentativa {tentativa}/3)...")
+                response = client.models.generate_content(
+                    model=modelo,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(temperature=0.2),
+                )
+                if response.text:
+                    print(f"Resposta gerada com {modelo}.")
+                    return response.text
+                break
+            except Exception as erro:
+                msg = str(erro)
+                if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+                    print(f"Cota esgotada em {modelo}, tentando o próximo modelo...")
+                    break
+                if any(c in msg for c in ("503", "500", "504", "UNAVAILABLE")):
+                    espera = 15 * tentativa
+                    print(f"Modelo {modelo} indisponível, aguardando {espera}s...")
+                    time.sleep(espera)
+                    continue
+                raise
 
-    raise RuntimeError("Todos os modelos atingiram a cota. Tente novamente mais tarde.")
+    raise RuntimeError("Nenhum modelo respondeu. Tente novamente mais tarde.")
 
 
 # =============================================================
