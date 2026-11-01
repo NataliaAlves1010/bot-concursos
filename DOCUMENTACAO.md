@@ -3,8 +3,8 @@
 ## Como funciona
 
 1. O GitHub Actions executa o bot às segundas, quartas e sextas às 08:00, horário de Brasília. Também é possível iniciar uma execução manual na aba **Actions**.
-2. O script consulta páginas públicas oficiais da SEAD e do Governo do Piauí, da COPESE/UFPI, do IFPI, do NUCEPE/UESPI e páginas do MGI sobre concursos federais e CPNU.
-3. O bot extrai o texto das páginas e, quando encontra links internos relacionados a concursos ou editais, consulta até dois detalhes por fonte.
+2. O script consulta páginas públicas oficiais da SEAD e do Governo do Piauí, da COPESE/UFPI, do IFPI, do NUCEPE/UESPI e do MGI, além das páginas das bancas FGV, Cebraspe, FCC, Instituto AOCP, IDECAN, IBFC, Vunesp e Quadrix.
+3. O bot extrai o texto das páginas e, quando encontra links internos relacionados a concursos ou editais, consulta até um detalhe por página monitorada.
 4. O Gemini 3.8 Flash resume somente o material coletado. A chamada não ativa Google Search Grounding.
 5. O resultado é dividido em mensagens e enviado ao Telegram.
 
@@ -12,7 +12,7 @@
 
 As URLs ficam na lista `FONTES_OFICIAIS` em `bot.py`. A coleta busca primeiro a listagem de cada fonte e abre um número limitado de páginas internas. Os sites podem mudar sua estrutura, ficar indisponíveis ou publicar editais em links que o coletor não reconhece.
 
-O conjunto é intencionalmente limitado, com foco no Piauí e em páginas federais do MGI. Ele não substitui uma pesquisa abrangente em todos os órgãos e estados. Confira oportunidades e prazos sempre no edital oficial; o Gemini não deve preencher dados que não estejam presentes no texto coletado.
+O conjunto é intencionalmente limitado, com foco no Piauí, em concursos federais e nas bancas listadas. Ele não substitui uma pesquisa abrangente em todos os órgãos e estados. Confira oportunidades e prazos sempre no edital oficial; o Gemini não deve preencher dados que não estejam presentes no texto coletado.
 
 ## Uso da API do Gemini
 

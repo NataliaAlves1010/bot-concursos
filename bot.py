@@ -103,6 +103,17 @@ FONTES_OFICIAIS = [
         "https://www.gov.br/servidor/pt-br/observatorio-de-pessoal-govbr/autorizacoes-e-provimentos-concursos/",
     ),
     ("Concurso Público Nacional Unificado / MGI", "https://www.gov.br/gestao/pt-br/concursonacional"),
+    ("FGV Conhecimento", "https://conhecimento.fgv.br/concursos"),
+    ("Cebraspe - notícias oficiais", "https://www.cebraspe.org.br/noticias/"),
+    ("Cebraspe - concursos com inscrições abertas", "https://www.cebraspe.org.br/concursos/inscricoes-abertas/"),
+    ("Fundação Carlos Chagas (FCC)", "https://www.concursosfcc.com.br/concursoAndamento.html"),
+    ("Instituto AOCP - inscrições abertas", "https://www.institutoaocp.org.br/concursos/status/inscricoes-abertas"),
+    ("Instituto AOCP - concursos em andamento", "https://www.institutoaocp.org.br/concursos/status/em-andamento"),
+    ("IDECAN", "https://portal.concursos.idecan.org.br/edital"),
+    ("IBFC", "https://concursos.ibfc.org.br/"),
+    ("Fundação Vunesp", "https://www.vunesp.com.br/concursos.html"),
+    ("Quadrix - inscrições abertas", "https://quadrix.org.br/index/abertos/"),
+    ("Quadrix - concursos em andamento", "https://quadrix.org.br/"),
 ]
 
 TERMOS_DE_CONCURSO = re.compile(r"concurso|edital|sele[cç][aã]o|seletivo", re.IGNORECASE)
@@ -112,8 +123,8 @@ TERMOS_DE_TI = re.compile(
     r"ci[eê]ncia de dados|banco de dados|infraestrutura de ti|\bti\b",
     re.IGNORECASE,
 )
-MAX_TEXTO_POR_PAGINA = 6500
-MAX_DETALHES_POR_FONTE = 2
+MAX_TEXTO_POR_PAGINA = 4500
+MAX_DETALHES_POR_FONTE = 1
 
 
 def extrair_pagina_oficial(url):
@@ -150,6 +161,12 @@ def extrair_pagina_oficial(url):
         if parsed.path.lower().endswith((".pdf", ".zip", ".doc", ".docx")):
             continue
         contexto = f"{rotulo} {destino}"
+        contenedor = ancora
+        for _ in range(3):
+            if contenedor.parent is None:
+                break
+            contenedor = contenedor.parent
+            contexto += " " + contenedor.get_text(" ", strip=True)
         if TERMOS_DE_CONCURSO.search(contexto):
             prioridade = 2 if TERMOS_DE_TI.search(contexto) else 0
             if re.search(r"20(25|26|27)", contexto):
@@ -240,7 +257,7 @@ def gerar_radar_concursos():
 
 Analise EXCLUSIVAMENTE o conteúdo das páginas oficiais incluídas abaixo. Você não tem busca na web nesta etapa e não deve usar conhecimento prévio para completar informações.
 
-A coleta cobre fontes oficiais selecionadas do Piauí e páginas federais do MGI. É uma amostra limitada, não uma cobertura de todos os concursos do Brasil.
+A coleta cobre fontes oficiais selecionadas do Piauí, páginas federais do MGI e páginas das bancas FGV, Cebraspe, FCC, AOCP, IDECAN, IBFC, Vunesp e Quadrix. É uma amostra limitada, não uma cobertura de todos os concursos do Brasil.
 
 DATA ATUAL: {data_hoje}
 
@@ -260,12 +277,31 @@ PÁGINAS OFICIAIS CONSULTADAS:
 {conteudo_fontes}
 """
 
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(temperature=0.2),
-    )
-    return response.text
+    modelos = [
+        "gemini-3.8-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+    ]
+
+    for modelo in modelos:
+        try:
+            print(f"Tentando modelo {modelo}...")
+            response = client.models.generate_content(
+                model=modelo,
+                contents=prompt,
+                config=types.GenerateContentConfig(temperature=0.2),
+            )
+            if response.text:
+                print(f"Resposta gerada com {modelo}.")
+                return response.text
+        except Exception as erro:
+            if "429" in str(erro) or "RESOURCE_EXHAUSTED" in str(erro):
+                print(f"Cota esgotada em {modelo}, tentando o próximo...")
+                continue
+            raise
+
+    raise RuntimeError("Todos os modelos atingiram a cota. Tente novamente mais tarde.")
 
 
 # =============================================================

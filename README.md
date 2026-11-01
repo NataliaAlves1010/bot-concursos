@@ -7,6 +7,7 @@ Bot automatizado que consulta páginas públicas oficiais de concursos, usa o **
 - SEAD e Governo do Piauí
 - COPESE/UFPI, IFPI e NUCEPE/UESPI
 - Páginas do Ministério da Gestão e da Inovação em Serviços Públicos (MGI) sobre autorizações e CPNU
+- Bancas organizadoras: FGV, Cebraspe, FCC, Instituto AOCP, IDECAN, IBFC, Vunesp e Quadrix
 
 A coleta é limitada a essas páginas e pode não encontrar todos os concursos do Brasil. Os resultados devem ser conferidos no edital oficial. A geração de texto usa a cota gratuita disponível para o Gemini; ela continua sujeita aos limites de uso da conta.
 
