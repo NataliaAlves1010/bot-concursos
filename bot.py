@@ -27,13 +27,9 @@ if not TELEGRAM_BOT_TOKEN:
 
 
 # -------------------------------------------------------------
-# 2. Coleta de Oportunidades via Google News RSS (100% Livre de Bloqueios)
+# 2. Coleta de Oportunidades via Google News RSS (100% Gratuito)
 # -------------------------------------------------------------
 def buscar_noticias_concursos():
-    """
-    Coleta notícias e editais em tempo real direto dos feeds RSS do Google News.
-    Essa abordagem funciona com 100% de estabilidade no GitHub Actions (sem bloqueio de IP).
-    """
     consultas = [
         "concurso TI Piaui",
         "concurso TI Teresina",
@@ -190,9 +186,10 @@ NOTÍCIAS E PUBLICAÇÕES COLETADAS:
 """
 
     modelos = [
+        "gemini-3.8-flash",
+        "gemini-3.5-flash-lite",
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
-        "gemini-1.5-flash",
     ]
 
     for modelo in modelos:
@@ -205,10 +202,14 @@ NOTÍCIAS E PUBLICAÇÕES COLETADAS:
                     config=types.GenerateContentConfig(temperature=0.2),
                 )
                 if response.text:
+                    print(f"Resposta gerada com sucesso usando {modelo}!")
                     return response.text
                 break
             except Exception as erro:
                 msg = str(erro)
+                if "404" in msg or "NOT_FOUND" in msg or "no longer available" in msg:
+                    print(f"Modelo {modelo} descontinuado/indisponível na sua conta, tentando o próximo modelo...")
+                    break
                 if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
                     print(f"Cota cheia em {modelo}, tentando modelo alternativo...")
                     break
