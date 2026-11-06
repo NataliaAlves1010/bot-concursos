@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import requests
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from google import genai
 from google.genai import types
 
@@ -25,47 +25,65 @@ if not TELEGRAM_BOT_TOKEN:
 
 
 # -------------------------------------------------------------
-# 2. Busca na Web com DuckDuckGo
+# 2. Busca Ampla na Web com DDGS
 # -------------------------------------------------------------
 def buscar_concursos_web():
     """
-    Realiza buscas estruturadas na web via DuckDuckGo com termos específicos
-    para Piauí, Teresina, Nordeste e Federais/Nacionais de TI.
+    Realiza buscas estruturadas na web cobrindo:
+    1. Teresina e Piauí (cargos específicos e órgãos)
+    2. Grandes portais de concursos (PCI Concursos, Folha Dirigida, Gran, Estratégia)
+    3. Cidades vizinhas e Nordeste (Maranhão, Ceará, etc.)
+    4. Concursos Nacionais e Federais (CNU, Tribunais, Bancos, etc.)
     """
     consultas = [
-        'concurso TI Piauí 2026 2027 "tecnologia da informação"',
-        'concurso Teresina TI "analista de sistemas" OR "técnico em informática"',
-        'concurso aberto previsto "tecnologia da informação" Piauí',
-        'concurso TI Nordeste 2026 edital inscrições abertas',
-        'concurso federal TI nacional CNU 2026 2027 vagas tecnologia da informação',
+        # --- Nível 1: Teresina e Piauí ---
+        'concurso TI Piauí tecnologia da informação',
+        'concurso Teresina analista de sistemas OU técnico em informática',
+        'concurso aberto previsto TI Piauí',
+        'site:pciconcursos.com.br concurso TI Piaui',
+
+        # --- Nível 2: Cidades Próximas e Nordeste ---
+        'concurso TI Nordeste tecnologia da informacao edital aberto',
+        'concurso TI Maranhão OU Ceará analista desenvolvedor',
+
+        # --- Nível 3: Nacionais, Federais e Grandes Portais ---
+        'concurso federal TI vagas tecnologia da informacao',
+        'concurso nacional TI CNU analista tecnologia',
+        'site:folhadirigida.com.br concurso TI aberto previsto',
+        'concurso tribunal TI TRT TRE TRF analista de ti',
     ]
 
     resultados_totais = []
     urls_vistas = set()
 
-    print("Iniciando pesquisas de concursos na web via DuckDuckGo...")
+    print("Iniciando pesquisas abrangentes na web...")
 
     try:
         with DDGS() as ddgs:
             for q in consultas:
                 try:
-                    res = ddgs.text(q, region="br-pt", timelimit="m", max_results=6)
-                    for item in res:
-                        href = item.get("href") or item.get("link", "")
-                        if href and href not in urls_vistas:
-                            urls_vistas.add(href)
-                            resultados_totais.append({
-                                "title": item.get("title", ""),
-                                "link": href,
-                                "snippet": item.get("body", "") or item.get("snippet", "")
-                            })
+                    # Sem timelimit rígido para não cortar editais autorizados/previstos
+                    res = ddgs.text(q, region="br-pt", max_results=5)
+                    adicionados = 0
+                    if res:
+                        for item in res:
+                            href = item.get("href") or item.get("link", "")
+                            if href and href not in urls_vistas:
+                                urls_vistas.add(href)
+                                resultados_totais.append({
+                                    "title": item.get("title", ""),
+                                    "link": href,
+                                    "snippet": item.get("body", "") or item.get("snippet", "")
+                                })
+                                adicionados += 1
+                    print(f"Termo: '{q}' -> {adicionados} resultados.")
                 except Exception as erro_busca:
                     print(f"Aviso ao consultar termo '{q}': {erro_busca}")
-                time.sleep(1)  # Intervalo de cortesia entre consultas
+                time.sleep(1.2)  # Intervalo para não sofrer rate-limit
     except Exception as erro_geral:
-        print(f"Erro ao inicializar DuckDuckGo: {erro_geral}")
+        print(f"Erro ao inicializar DDGS: {erro_geral}")
 
-    print(f"Total de resultados únicos coletados na web: {len(resultados_totais)}")
+    print(f"\nTotal de resultados únicos coletados na web: {len(resultados_totais)}")
     return resultados_totais
 
 
@@ -73,10 +91,6 @@ def buscar_concursos_web():
 # 3. Análise e Formatação com o Google Gemini
 # -------------------------------------------------------------
 def analisar_com_gemini(resultados_busca):
-    """
-    Submete os resultados reais da web ao Gemini para filtrar rigorosamente
-    apenas vagas de TI, remover editais antigos e classificar por prioridade.
-    """
     client = genai.Client(api_key=GEMINI_API_KEY)
     data_hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y")
 
@@ -92,25 +106,24 @@ OBJETIVO E REGRAS
 Você funciona como um RADAR DE CONCURSOS.
 Seu objetivo é encontrar o maior número possível de oportunidades relevantes de TI sem perder oportunidades por causa da localização.
 
-A prioridade é encontrar oportunidades próximas a Teresina e Piauí, mas concursos de outras regiões e nacionais também devem ser incluídos quando forem relevantes.
+A prioridade máxima é destacar oportunidades em Teresina e no Piauí, mas concursos do Nordeste e Concursos Nacionais/Federais DEVEM ser incluídos com grande destaque.
 
 NÃO invente informações.
 NÃO complete informações usando conhecimento prévio sem evidência dos resultados.
 NÃO faça previsões próprias nem transforme possibilidades em informações confirmadas.
 
-Considere uma oportunidade relacionada à Tecnologia da Informação quando os resultados mencionarem explicitamente cargos ou áreas como:
+Considere uma oportunidade de TI quando os resultados mencionarem cargos ou áreas como:
 - Tecnologia da Informação / TI
 - Analista de TI / Técnico de TI
-- Analista de Sistemas / Desenvolvimento de Software / Programador
-- Redes de Computadores / Infraestrutura / Segurança da Informação
+- Analista de Sistemas / Engenharia de Software / Desenvolvedor / Programador
+- Redes / Infraestrutura / Segurança da Informação / Suporte
 - Ciência de Dados / Banco de Dados / Inteligência Artificial
 
 PRIORIDADE GEOGRÁFICA:
-1. Teresina - PI
-2. Outros municípios do Piauí
-3. Cidades vizinhas e Nordeste
-4. Concursos nacionais / unificados (CNU, federais)
-5. Outros estados quando forem vagas relevantes de TI
+1. ALTA: Teresina - PI, outros municípios do Piauí e estados vizinhos imediatos (ex: Maranhão, Ceará).
+2. MÉDIA: Outros estados do Nordeste.
+3. NACIONAL: Concursos federais, unificados (CNU), tribunais federais, bancos e órgãos nacionais.
+4. BAIXA: Oportunidades relevantes em outros estados distantes.
 
 SITUAÇÃO DO CONCURSO:
 Classifique SOMENTE em:
@@ -124,7 +137,7 @@ Classifique SOMENTE em:
 
 DATAS:
 A data atual é {data_hoje}.
-Se as inscrições terminaram antes de {data_hoje}, NÃO marque como "Inscrições abertas". Se o concurso estiver totalmente encerrado e sem novas etapas/previsões, descarte.
+Se as inscrições terminaram antes de {data_hoje}, NÃO marque como "Inscrições abertas". Se o concurso estiver totalmente encerrado, descarte.
 
 ORGANIZAÇÃO DAS SEÇÕES:
 1. INSCRIÇÕES ABERTAS
@@ -206,10 +219,6 @@ RESULTADOS COLETADOS DA WEB:
 # 4. Envio ao Telegram em Partes (< 4000 caracteres)
 # -------------------------------------------------------------
 def enviar_para_telegram(texto):
-    """
-    Divide a mensagem em blocos de até 4000 caracteres (limite do Telegram)
-    e despacha para o Chat ID configurado.
-    """
     limite = 4000
     partes = [texto[i:i + limite] for i in range(0, len(texto), limite)]
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
