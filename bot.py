@@ -1,10 +1,12 @@
 import os
 import sys
 import time
+import urllib.request
+import urllib.parse
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import requests
-from ddgs import DDGS
 from google import genai
 from google.genai import types
 
@@ -25,91 +27,96 @@ if not TELEGRAM_BOT_TOKEN:
 
 
 # -------------------------------------------------------------
-# 2. Busca Ampla na Web com DDGS
+# 2. Coleta de Oportunidades via Google News RSS (100% Livre de Bloqueios)
 # -------------------------------------------------------------
-def buscar_concursos_web():
+def buscar_noticias_concursos():
     """
-    Realiza buscas estruturadas na web cobrindo:
-    1. Teresina e Piauí (cargos específicos e órgãos)
-    2. Grandes portais de concursos (PCI Concursos, Folha Dirigida, Gran, Estratégia)
-    3. Cidades vizinhas e Nordeste (Maranhão, Ceará, etc.)
-    4. Concursos Nacionais e Federais (CNU, Tribunais, Bancos, etc.)
+    Coleta notícias e editais em tempo real direto dos feeds RSS do Google News.
+    Essa abordagem funciona com 100% de estabilidade no GitHub Actions (sem bloqueio de IP).
     """
     consultas = [
-        # --- Nível 1: Teresina e Piauí ---
-        'concurso TI Piauí tecnologia da informação',
-        'concurso Teresina analista de sistemas OU técnico em informática',
-        'concurso aberto previsto TI Piauí',
-        'site:pciconcursos.com.br concurso TI Piaui',
-
-        # --- Nível 2: Cidades Próximas e Nordeste ---
-        'concurso TI Nordeste tecnologia da informacao edital aberto',
-        'concurso TI Maranhão OU Ceará analista desenvolvedor',
-
-        # --- Nível 3: Nacionais, Federais e Grandes Portais ---
-        'concurso federal TI vagas tecnologia da informacao',
-        'concurso nacional TI CNU analista tecnologia',
-        'site:folhadirigida.com.br concurso TI aberto previsto',
-        'concurso tribunal TI TRT TRE TRF analista de ti',
+        "concurso TI Piaui",
+        "concurso TI Teresina",
+        "concurso analista sistemas Piaui",
+        "concurso tecnico informatica Piaui",
+        "concurso tecnologia da informacao Piaui",
+        "concurso TI Maranhao Ceara Nordeste",
+        "concurso CNU bloco tecnologia da informacao",
+        "concurso TI tribunal TRT TRE TRF",
+        "concurso federal TI vagas",
+        "concurso aberto tecnologia da informacao 2026 2027",
     ]
 
-    resultados_totais = []
-    urls_vistas = set()
+    noticias = []
+    links_vistos = set()
 
-    print("Iniciando pesquisas abrangentes na web...")
+    print("Iniciando varredura de concursos em tempo real (Google News Engine)...")
 
-    try:
-        with DDGS() as ddgs:
-            for q in consultas:
-                try:
-                    # Sem timelimit rígido para não cortar editais autorizados/previstos
-                    res = ddgs.text(q, region="br-pt", max_results=5)
-                    adicionados = 0
-                    if res:
-                        for item in res:
-                            href = item.get("href") or item.get("link", "")
-                            if href and href not in urls_vistas:
-                                urls_vistas.add(href)
-                                resultados_totais.append({
-                                    "title": item.get("title", ""),
-                                    "link": href,
-                                    "snippet": item.get("body", "") or item.get("snippet", "")
-                                })
-                                adicionados += 1
-                    print(f"Termo: '{q}' -> {adicionados} resultados.")
-                except Exception as erro_busca:
-                    print(f"Aviso ao consultar termo '{q}': {erro_busca}")
-                time.sleep(1.2)  # Intervalo para não sofrer rate-limit
-    except Exception as erro_geral:
-        print(f"Erro ao inicializar DDGS: {erro_geral}")
+    for termo in consultas:
+        url = (
+            f"https://news.google.com/rss/search?"
+            f"q={urllib.parse.quote(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+        )
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                },
+            )
+            with urllib.request.urlopen(req, timeout=15) as resposta:
+                conteudo_xml = resposta.read()
+                raiz = ET.fromstring(conteudo_xml)
 
-    print(f"\nTotal de resultados únicos coletados na web: {len(resultados_totais)}")
-    return resultados_totais
+                encontrados_nesta_busca = 0
+                for item in raiz.findall(".//item")[:10]:
+                    titulo = item.find("title").text if item.find("title") is not None else ""
+                    link = item.find("link").text if item.find("link") is not None else ""
+                    pub_date = item.find("pubDate").text if item.find("pubDate") is not None else ""
+                    descricao = item.find("description").text if item.find("description") is not None else ""
+
+                    if link and link not in links_vistos:
+                        links_vistos.add(link)
+                        noticias.append({
+                            "termo_pesquisa": termo,
+                            "titulo": titulo,
+                            "link": link,
+                            "data_publicacao": pub_date,
+                            "resumo": descricao
+                        })
+                        encontrados_nesta_busca += 1
+
+                print(f"Termo: '{termo}' -> {encontrados_nesta_busca} oportunidades coletadas.")
+        except Exception as erro:
+            print(f"Aviso ao consultar '{termo}': {erro}")
+        time.sleep(0.5)
+
+    print(f"\nTotal de notícias e editais únicos coletados: {len(noticias)}")
+    return noticias
 
 
 # -------------------------------------------------------------
-# 3. Análise e Formatação com o Google Gemini
+# 3. Análise, Filtragem e Formatação com o Google Gemini
 # -------------------------------------------------------------
-def analisar_com_gemini(resultados_busca):
+def analisar_com_gemini(noticias):
     client = genai.Client(api_key=GEMINI_API_KEY)
     data_hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y")
 
     prompt = f"""Você é um assistente especializado em MONITORAMENTO DE CONCURSOS PÚBLICOS.
 
-Sua função é analisar EXCLUSIVAMENTE os resultados de busca da web fornecidos abaixo e identificar oportunidades de concursos relevantes para a área de Tecnologia da Informação (TI).
+Sua missão é analisar as notícias, editais e publicações recentes fornecidas abaixo e identificar oportunidades de concursos relevantes para a área de Tecnologia da Informação (TI).
 
 DATA ATUAL: {data_hoje}
 
 ════════════════════════════════════
-OBJETIVO E REGRAS
+OBJETIVO E REGRAS DE FILTRO
 ════════════════════════════════════
 Você funciona como um RADAR DE CONCURSOS.
-Seu objetivo é encontrar o maior número possível de oportunidades relevantes de TI sem perder oportunidades por causa da localização.
+Seu objetivo é encontrar o maior número possível de oportunidades de TI sem perder oportunidades por causa da localização.
 
-A prioridade máxima é destacar oportunidades em Teresina e no Piauí, mas concursos do Nordeste e Concursos Nacionais/Federais DEVEM ser incluídos com grande destaque.
+A prioridade máxima é destacar oportunidades em Teresina e no Piauí, mas concursos do Nordeste e Concursos Nacionais/Federais DEVEM ser incluídos com destaque se tiverem vagas de TI.
 
 NÃO invente informações.
-NÃO complete informações usando conhecimento prévio sem evidência dos resultados.
 NÃO faça previsões próprias nem transforme possibilidades em informações confirmadas.
 
 Considere uma oportunidade de TI quando os resultados mencionarem cargos ou áreas como:
@@ -175,11 +182,11 @@ Média: X
 Nacional: X
 Baixa: X
 
-Se nenhum concurso atender aos critérios nos resultados:
+Se nenhuma oportunidade de TI for identificada:
 "Nenhum concurso de TI relevante encontrado nesta busca."
 
-RESULTADOS COLETADOS DA WEB:
-{resultados_busca}
+NOTÍCIAS E PUBLICAÇÕES COLETADAS:
+{noticias}
 """
 
     modelos = [
@@ -243,12 +250,12 @@ def enviar_para_telegram(texto):
 # -------------------------------------------------------------
 def main():
     try:
-        resultados = buscar_concursos_web()
-        if not resultados:
-            print("Nenhum resultado capturado na web.")
+        noticias = buscar_noticias_concursos()
+        if not noticias:
+            print("Nenhuma notícia capturada na web.")
             return
 
-        mensagem = analisar_com_gemini(resultados)
+        mensagem = analisar_com_gemini(noticias)
         if not mensagem:
             print("Nenhuma mensagem formatada pelo Gemini.")
             return
