@@ -44,7 +44,7 @@ No repositório que você criou:
 | :--- | :--- |
 | `GEMINI_API_KEY` | Sua chave do Google AI Studio (Gemini) |
 | `TELEGRAM_BOT_TOKEN` | Token do seu bot do Telegram (BotFather) |
-| `TELEGRAM_CHAT_ID` | `2051744073` (ou o ID do chat/canal que preferir) |
+| `TELEGRAM_CHAT_ID` |  O ID do chat/canal que preferir |
 
 ---
 
