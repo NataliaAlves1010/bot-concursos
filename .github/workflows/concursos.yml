@@ -2,9 +2,11 @@ name: Monitor Concursos TI
 
 on:
   schedule:
-    # 11:00 UTC = 08:00 Horário de Brasília (UTC-3)
+    # 10:55 UTC = 07:55 Horário de Brasília (UTC-3)
+    # Rodar aos 55 minutos evita a fila cheia das horas em ponto (:00) no GitHub Actions,
+    # garantindo que o bot execute pontualmente por volta das 08:00.
     # Segundas (1), Quartas (3) e Sextas (5)
-    - cron: '0 11 * * 1,3,5'
+    - cron: '55 10 * * 1,3,5'
   workflow_dispatch: # Permite disparar manualmente pelo botão "Run workflow" no GitHub
 
 jobs:
